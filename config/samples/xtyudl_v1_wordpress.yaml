@@ -1,0 +1,7 @@
+apiVersion: xtyudl.cic.ibm.com/v1
+kind: WordPress
+metadata:
+  name: wordpress-sample
+spec:
+  # Add fields here
+  foo: bar

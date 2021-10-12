@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress-db-deploy
+  labels:
+    db: {{ db }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      db: {{ db }}
+  template:
+    metadata:
+      labels:
+        db: {{ db }}
+    spec:
+      serviceAccount: wordpresses-operator-sa
+      containers:
+      - name: {{ db }}
+        image: {{ db_image }}
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        envFrom:
+        - configMapRef:
+            name: wordpress-configmap
+        - secretRef:
+            name: wordpress-secret
+        ports:
+        - name: db-port
+          containerPort: 3306
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+          requests:
+            memory: "256Mi"
+            cpu: "64m"
+      
+
+            

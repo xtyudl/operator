@@ -1,0 +1,15 @@
+---
+# defaults file for Wordpress
+app: wordpress
+db: wordpress-db
+
+global_state: present
+
+app_replicas: 1
+app_image: wordpress:4.8.1
+db_image: mysql:5.7
+db_client_image: arey/mysql-client
+
+secret:
+  dk_api_key: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') | to_uuid }}"
+

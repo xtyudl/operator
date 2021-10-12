@@ -1,0 +1,69 @@
+---
+# tasks file for Db2console
+- name: Check version
+  fail:
+    msg: "Version {{ version }} is not supported"
+  when: version not in [ "1.0" ]
+
+- name: Set fact
+  set_fact:
+    namespace: "{{ ansible_operator_meta.namespace }}"
+  when: ansible_operator_meta.namespace is defined # Avoid failure when debugging locally
+############################################################################
+# VERIFY GLOBAL UC-CONSOLE-API-KEY EXISTS
+############################################################################
+- name: check secrets
+  k8s_info:
+    kind: Secret
+    name: "console-api-key"
+    namespace: "{{ namespace }}"
+  register: existing_dk_console_api_key_secret_info
+  retries: 2
+  delay: 20
+
+- debug:
+    var: existing_dk_console_api_key_secret_info
+
+- name: create console secrets
+  block:
+    - name: create secrets
+      vars:
+        comp_name: secrets
+      k8s:
+        state: "{{ global_state }}"
+        namespace: "{{ namespace }}"
+        definition: "{{ lookup('template', item.name) | from_yaml }}"
+      loop:
+        - name: wordpress-apikey-secret.yaml.j2
+        - name: wordpress-secret.yaml.j2
+  when: (existing_dk_console_api_key_secret_info.resources | length < 1)
+
+- name: Create deployment and service
+  vars:
+    comp: wordpress
+  k8s:
+    state: "{{ global_state }}"
+    namespace: "{{ namespace }}"
+    definition: "{{ lookup('template', item.name) | from_yaml }}"
+  loop:
+    - name: wordpress-configmap.yaml.j2
+    - name: wordpress-db-deployment.yaml.j2
+    - name: wordpress-db-service.yaml.j2
+    - name: wordpress-deployment.yaml.j2
+    - name: wordpress-service.yaml.j2
+    - name: wordpress-route.yaml.j2
+
+- name: Wait until wordpress-addon-api deployment finish
+  k8s_info:
+    kind: Deployment
+    name: "{{ app }}"
+    namespace: "{{ namespace }}"
+  register: addonApi_deployment_info
+  retries: 10
+  delay: 30
+  until: addonApi_deployment_info.resources[0].status.readyReplicas is defined and addonApi_deployment_info.resources[0].status.availableReplicas is defined and ( addonApi_deployment_info.resources[0].status.replicas == addonApi_deployment_info.resources[0].status.readyReplicas ) and ( addonApi_deployment_info.resources[0].status.replicas == addonApi_deployment_info.resources[0].status.availableReplicas )
+  loop:
+    - "{{ app }}"
+  vars:
+    comp: wordpress
+

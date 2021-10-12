@@ -1,0 +1,10 @@
+---
+- hosts: localhost
+  gather_facts: no
+  collections:
+    - community.kubernetes
+    - operator_sdk.util
+  tasks:
+    - name: Invoke a play run for the assembly
+      include_role:
+        name: "/opt/ansible/roles/wordpress"
